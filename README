@@ -1,0 +1,6 @@
+kerneltools
+
+kerneltools is a kernel compilation and configuration tool constantly 
+under development. Currently it supports compilation and configiguration 
+on systems containing GRUB2 bootloader. Further support for other 
+bootloaders will be supported later on.
