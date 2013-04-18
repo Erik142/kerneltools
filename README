@@ -1,6 +1,42 @@
 kerneltools
 
-kerneltools is a kernel compilation and configuration tool constantly 
-under development. Currently it supports compilation and configiguration 
+kerneltools is a Linux kernel compilation and configuration tool constantly 
+under development. Currently it supports compilation and configuration 
 on systems containing GRUB2 bootloader. Further support for other 
 bootloaders will be supported later on.
+
+
+
+What's working right now:
+
+Flags:
+
+--ck : Con Kolivas Linux Patchset
+
+-s, --search : Only search for newest linux version available. When invoked 
+with --rc or --ck, it will search for those aswell.
+
+-c : Specify configuration file, or else the program will ask to generate a new one.
+
+--rc : Install Release Candidate kernels
+
+--vbox : Installs vboxhost modules, for invoking virtualbox
+
+--brcm : Installs broadcom-sta modules
+
+
+
+
+What's not working right now(Being worked on every day!):
+
+Flags:
+
+-i : Install flag, although the script searches and installs the newest kernel 
+without this flag at the moment.
+
+
+
+
+Other functions:
+
+Removing kernels automatically is not fully functional at the moment.
