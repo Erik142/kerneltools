@@ -9,26 +9,30 @@ fi
 }
 
 
-echo "May the force be with you, fellow sudoer..."
+
 
 if [[ $EUID -ne 0 ]]; then
-	echo "Wait, you're not a sudoer..." 1>&2
+	echo "This script must be run as root!" 1>&2
 	exit 1
 fi
+
+
 
 
 LOCAL_VERSION="-Erik"
 RETRIEVE_PATH="https://www.kernel.org/pub/linux/kernel/v3.x"
 SRC_DIR="/usr/src/"
-CONFIG_FILE="Erik-Arch-minimal-mac.config"
-CONFIG_FILE_CK="Erik-Arch-minimal-mac-ck.config"
+#CONFIG_FILE="Erik-Arch-minimal.config"
+#CONFIG_FILE_CK="Erik-Arch-minimal-ck.config"
+CONFIG_FILE=""
+CONFIG_FILE_CK=""
 MAKE_JOBS=$(grep -c ^processor /proc/cpuinfo)
 MAKE_JOBS=$((MAKE_JOBS+1))
 RC_FLAG=0
 INITRD_FLAG=0
 SEARCH_FLAG=0
 KERNEL_FLAG=0
-BRCM_FLAG=1
+BRCM_FLAG=0
 VBOX_FLAG=0
 COMPLETE_FLAG=0
 CUSTOM_CONFIG_FLAG=0
@@ -70,27 +74,41 @@ INITRD_FLAG=1;;
 echo "--search flag saved"
 fnCheckSuccess
 SEARCH_FLAG=1;;
-"--config" | "-c")
-echo "--config flag saved"
-fnCheckSuccess
-CUSTOM_CONFIG_FLAG=1;;
 "--brcm")
 echo "--brcm flag saved"
+fnCheckSuccess
 BRCM_FLAG=1;;
+"--vbox")
+echo "--vbox flag saved"
+VBOX_FLAG=1;;
 *) echo "could not get flag"
 fnCheckSuccess;;
 esac
 x=$((x+1))
 done
 
-VBOXVERSION=$(find $SRC_DIR -maxdepth 1 -type d -name vboxhost-\*)
+while getopts ":cl:" optname
+do
+	case "$optname" in
+	"c")
+		if [ $CK_FLAG -eq 1 ]
+		then
+		CONFIG_FILE_CK=$OPTARG
+		else
+		CONFIG_FILE=$OPTARG
+		fi
+	esac
+done
+
+
+VBOXVERSION=$(find $SRC_DIR -type d -name vboxhost-\*)
 
 VBOXVERSION=${VBOXVERSION#${SRC_DIR}}
 VBOXVERSION=$(printf $VBOXVERSION | sed 's/-/\//g')
 
 if [ $BRCM_FLAG -eq 1 ]
 then
-BRCMVERSION=$(find $SRC_DIR -maxdepth 1 -type d -name broadcom-wl-\*)
+BRCMVERSION=$(find $SRC_DIR -type d -name broadcom-wl-\*)
 BRCMVERSION=${BRCMVERSION#${SRC_DIR}}
 BRCMVERSION=$(printf $BRCMVERSION | sed 's/-/\//2')
 fi
@@ -342,7 +360,6 @@ fi
 
 
 
-	echo "Building linux-$VERSION$LOCAL_VERSION..."
 	
 	cd $SRC_DIR$SOURCE_FOLDER
 	fnCheckSuccess
@@ -353,13 +370,62 @@ fi
 		fnCheckSuccess
 	fi
 		
-	echo "Moving .config file"
-	cp $SRC_DIR/$CONFIG_FILE .config
+	if [ -f $SRC_DIR"configs/"$CONFIG_FILE ]
+	then
+	cp $SRC_DIR"configs/"$CONFIG_FILE .config
 	fnCheckSuccess
 
-	echo "Running make oldconfig"
+
+	echo "Moving .config file"
+
+	echo "Do you want to run menuconfig or oldconfig? M/o"
+	read inputvar
+	case $inputvar in
+	"M" | "m")
+	make menuconfig
+	fnCheckSuccess;;
+	"O" | "o")
 	make oldconfig
-	fnCheckSuccess
+	fnCheckSuccess;;
+	esac
+
+	else
+	x=1
+	inputvar=""
+	echo "No config file found, do you want to try and generate a config file? Y/n Or press m to configure from scratch via menuconfig!"
+	read inputvar
+	while [ $x -ne 0 ]
+	do
+	case $inputvar in
+	"Y" | "y")
+	x=0
+	make fullconfig
+	make localmodconfig;;
+	"M" | "m")
+	x=0
+	make menuconfig;;
+	"N" | "n")
+	x=0
+	exit 1;;
+	*)
+	echo "Could not read that, please enter something else..."
+	x=1;;
+	esac
+	done
+	
+	fi
+
+	
+
+
+	LOCAL_VERSION=$(sed -n '/CONFIG_LOCALVERSION=/p' $SRC_DIR$SOURCEFOLDER/.config)
+	LOCAL_VERSION=${LOCAL_VERSION#"CONFIG_LOCALVERSION"}
+	LOCAL_VERSION=$(printf $LOCAL_VERSION | sed 's/=//g')
+	LOCAL_VERSION=$(printf $LOCAL_VERSION | sed 's/\"//g')
+
+
+
+	echo "Building linux-$VERSION$LOCAL_VERSION..."
 
 	echo "Compiling kernel"
 	make "-j$MAKE_JOBS"
@@ -367,12 +433,14 @@ fi
 
 	echo "Cleaning kernel..."
 	
-
+	if [ $VBOX_FLAG -eq 1 ]
+	then
 	if [ -f /lib/modules/$VERSION$LOCAL_VERSION/kernel/misc/vboxdrv.ko ]
 		then
 		echo "Removing vboxhost..."
 		dkms remove $VBOXVERSION -k $VERSION$LOCAL_VERSION
 		fnCheckSuccess	
+	fi
 	fi
 
 	if [ $BRCM_FLAG -eq 1 ]
@@ -458,10 +526,12 @@ fi
 	ln -s $SRC_DIR$SOURCE_FOLDER /lib/modules/$VERSION$LOCAL_VERSION/build
 	fi
 
-
+	if [ $VBOX_FLAG -eq 1 ]
+	then
 	echo "Installing new vboxhost..."
 	dkms install $VBOXVERSION -k $VERSION$LOCAL_VERSION
 	fnCheckSuccess
+	fi
 
 	if [ $BRCM_FLAG -eq 1 ]
 	then
@@ -479,7 +549,7 @@ fi
 
 	echo "Copying new .config to /usr/src..."
 	cd $SRC_DIR$SOURCE_FOLDER
-	cp .config ../$CONFIG_FILE
+	cp .config $SRC_DIR/configs/$CONFIG_FILE
 	fnCheckSuccess
 
 	echo "Generating grub.cfg"
