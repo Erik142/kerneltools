@@ -8,11 +8,11 @@ if [ $? -ne 0 ]
 fi
 }
 
-
+echo "May the force be with you, fellow sudoer..."
 
 
 if [[ $EUID -ne 0 ]]; then
-	echo "This script must be run as root!" 1>&2
+	echo "Wait, you're not a sudoer..." 1>&2
 	exit 1
 fi
 
