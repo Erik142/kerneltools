@@ -20,7 +20,6 @@ fi
 
 
 LOCAL_VERSION="-Erik"
-RETRIEVE_PATH="https://www.kernel.org/pub/linux/kernel/v3.x"
 SRC_DIR="/usr/src/"
 #CONFIG_FILE="Erik-Arch-minimal.config"
 #CONFIG_FILE_CK="Erik-Arch-minimal-ck.config"
@@ -141,7 +140,7 @@ echo "Searching for latest linux version..."
 
 while [ $? -eq 0 ]
 do
- 
+RETRIEVE_PATH="https://www.kernel.org/pub/linux/kernel/v$w.x"
 curl --output /dev/null --silent --head --fail "$RETRIEVE_PATH/linux-$w.0.tar.xz";
 
 if [ $? -ne 0 ]
@@ -195,7 +194,7 @@ SOURCE_FOLDER="linux-$w.$y.$z"
 
 
 else
-RETRIEVE_PATH="https://www.kernel.org/pub/linux/kernel/v3.x/testing"
+RETRIEVE_PATH="https://www.kernel.org/pub/linux/kernel/v$w.x/testing"
 rc=1
 z=0
 y=$((y+1))
