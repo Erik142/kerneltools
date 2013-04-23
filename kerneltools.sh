@@ -19,7 +19,7 @@ fi
 
 
 
-LOCAL_VERSION="-Erik"
+LOCAL_VERSION=""
 SRC_DIR="/usr/src/"
 #CONFIG_FILE="Erik-Arch-minimal.config"
 #CONFIG_FILE_CK="Erik-Arch-minimal-ck.config"
@@ -30,14 +30,11 @@ MAKE_JOBS=$((MAKE_JOBS+1))
 RC_FLAG=0
 INITRD_FLAG=0
 SEARCH_FLAG=0
-KERNEL_FLAG=0
+INSTALL_FLAG=0
 BRCM_FLAG=0
 VBOX_FLAG=0
-COMPLETE_FLAG=0
-CUSTOM_CONFIG_FLAG=0
-CUSTOM_MAKE_JOBS=0
 CK_FLAG=0
-CK=1
+VERBOSE_FLAG=0
 
 declare -a argArray
 x=0
@@ -80,6 +77,9 @@ BRCM_FLAG=1;;
 "--vbox")
 echo "--vbox flag saved"
 VBOX_FLAG=1;;
+"--verbose" | "-v")
+echo "--verbose flag saved"
+VERBOSE_FLAG=1;;
 *) echo "could not get flag"
 fnCheckSuccess;;
 esac
@@ -99,11 +99,13 @@ do
 	esac
 done
 
-
+if [ $VBOX_FLAG -eq 1 ]
+then
 VBOXVERSION=$(find $SRC_DIR -type d -name vboxhost-\*)
 
 VBOXVERSION=${VBOXVERSION#${SRC_DIR}}
 VBOXVERSION=$(printf $VBOXVERSION | sed 's/-/\//g')
+fi
 
 if [ $BRCM_FLAG -eq 1 ]
 then
@@ -141,11 +143,16 @@ echo "Searching for latest linux version..."
 while [ $? -eq 0 ]
 do
 RETRIEVE_PATH="https://www.kernel.org/pub/linux/kernel/v$w.x"
+if [ $VERBOSE_FLAG -eq 1 ]
+then
+echo "$RETRIEVE_PATH/linux-$w.0.tar.xz"
+fi
 curl --output /dev/null --silent --head --fail "$RETRIEVE_PATH/linux-$w.0.tar.xz";
 
 if [ $? -ne 0 ]
 	then
 	w=$((w-1))
+	RETRIEVE_PATH="https://www.kernel.org/pub/linux/kernel/v$w.x"
 	break
 fi
 
@@ -161,6 +168,10 @@ if [ $RC_FLAG -eq 0 ]
 then
 while [ $? -eq 0 ]
 do
+if [ $VERBOSE_FLAG -eq 1 ]
+then
+echo "$RETRIEVE_PATH/linux-$w.$y.tar.xz"
+fi
 curl --output /dev/null --silent --head --fail "$RETRIEVE_PATH/linux-$w.$y.tar.xz";
 
 if [ $? -ne 0 ]
@@ -175,7 +186,11 @@ done
 
 while [ $? -eq 0 ]
 do
-#--output /dev/null 		
+#--output /dev/null
+if [ $VERBOSE_FLAG -eq 1 ]
+then
+echo "$RETRIEVE_PATH/linux-$w.$y.$z.tar.xz"
+fi 		
 curl --output /dev/null --silent --head --fail "$RETRIEVE_PATH/linux-$w.$y.$z.tar.xz";
 
 if [ $? -ne 0 ]
@@ -198,9 +213,15 @@ RETRIEVE_PATH="https://www.kernel.org/pub/linux/kernel/v$w.x/testing"
 rc=1
 z=0
 y=$((y+1))
+
+
 while [ $? -eq 0 ]
 do
-#--output /dev/null 		
+#--output /dev/null
+if [ $VERBOSE_FLAG -eq 1 ]
+then
+echo "$RETRIEVE_PATH/linux-$w.$y-rc$rc.tar.xz"
+fi		
 curl --output /dev/null --silent --head --fail "$RETRIEVE_PATH/linux-$w.$y-rc$rc.tar.xz";
 
 if [ $? -ne 0 ]
@@ -227,6 +248,7 @@ fnSearchLinux
 if [ $CK_FLAG -eq 1 ]
 then
 
+CK=1
 CONFIG_FILE=$CONFIG_FILE_CK
 
 LOCAL_VERSION="-ck$CK$LOCAL_VERSION"
@@ -237,7 +259,10 @@ while [ $? -eq 0 ]
 do
 
 RETRIEVE_PATH_CK="http://ck.kolivas.org/patches/$w.0/$w.$y/$w.$y-ck$CK/patch-$w.$y-ck$CK.bz2"
-
+if [ $VERBOSE_FLAG -eq 1 ]
+then
+echo "$RETRIEVE_PATH_CK"
+fi
 curl --output /dev/null --silent --head --fail $RETRIEVE_PATH_CK
 
 if [ $? -ne 0 ]
@@ -398,7 +423,7 @@ fi
 	case $inputvar in
 	"Y" | "y")
 	x=0
-	make fullconfig
+	make defconfig
 	make localmodconfig;;
 	"M" | "m")
 	x=0
@@ -411,6 +436,7 @@ fi
 	x=1;;
 	esac
 	done
+	CONFIG_FILE=kerneltools-autoconfig-$LOCAL_VERSION
 	
 	fi
 
