@@ -66,7 +66,7 @@ CK_FLAG=1;;
 echo "--initrd flag saved"
 fnCheckSuccess
 INITRD_FLAG=1;;
-"--search" | "-s")
+"--search")
 echo "--search flag saved"
 fnCheckSuccess
 SEARCH_FLAG=1;;
@@ -77,7 +77,7 @@ BRCM_FLAG=1;;
 "--vbox")
 echo "--vbox flag saved"
 VBOX_FLAG=1;;
-"--verbose" | "-v")
+"--verbose")
 echo "--verbose flag saved"
 VERBOSE_FLAG=1;;
 *) echo "could not get flag"
@@ -86,7 +86,7 @@ esac
 x=$((x+1))
 done
 
-while getopts ":cl:" optname
+while getopts ":c:vs" optname
 do
 	case "$optname" in
 	"c")
@@ -96,6 +96,13 @@ do
 		else
 		CONFIG_FILE=$OPTARG
 		fi
+		;;
+	"v")
+	VERBOSE_FLAG=1
+	;;
+	"s")
+	SEARCH_FLAG=1
+	;;
 	esac
 done
 
