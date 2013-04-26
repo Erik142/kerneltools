@@ -116,7 +116,7 @@ fi
 
 if [ $BRCM_FLAG -eq 1 ]
 then
-BRCMVERSION=$(find $SRC_DIR -type d -name broadcom-wl-\*)
+BRCMVERSION=$(find $SRC_DIR -maxdepth 1 -type d -name broadcom-wl-\*)
 BRCMVERSION=${BRCMVERSION#${SRC_DIR}}
 BRCMVERSION=$(printf $BRCMVERSION | sed 's/-/\//2')
 fi
@@ -258,7 +258,7 @@ then
 CK=1
 CONFIG_FILE=$CONFIG_FILE_CK
 
-LOCAL_VERSION="-ck$CK$LOCAL_VERSION"
+#LOCAL_VERSION="-ck$CK$LOCAL_VERSION"
 
 echo "Searching for appropriate ck Patchset..."
 
@@ -312,7 +312,6 @@ if [ $CK_FLAG -eq 1 ]
 	then
 	echo "Found ck version $w.$y-ck$CK!"
 fi
-
 
 cd $SRC_DIR
 
@@ -403,11 +402,12 @@ fi
 		
 	if [ -f $SRC_DIR"configs/"$CONFIG_FILE ]
 	then
+	echo "Moving .config file"
 	cp $SRC_DIR"configs/"$CONFIG_FILE .config
 	fnCheckSuccess
 
 
-	echo "Moving .config file"
+	
 
 	echo "Do you want to run menuconfig or oldconfig? M/o"
 	read inputvar
@@ -450,10 +450,15 @@ fi
 	
 
 
-	LOCAL_VERSION=$(sed -n '/CONFIG_LOCALVERSION=/p' $SRC_DIR$SOURCEFOLDER/.config)
+	LOCAL_VERSION=$(sed -n '/CONFIG_LOCALVERSION=/p' $SRC_DIR$SOURCE_FOLDER/.config)	
 	LOCAL_VERSION=${LOCAL_VERSION#"CONFIG_LOCALVERSION"}
 	LOCAL_VERSION=$(printf $LOCAL_VERSION | sed 's/=//g')
 	LOCAL_VERSION=$(printf $LOCAL_VERSION | sed 's/\"//g')
+
+	if [ $CK_FLAG -eq 1 ]
+	then
+	LOCAL_VERSION="-ck$CK$LOCAL_VERSION"
+	fi
 
 
 
@@ -550,8 +555,9 @@ fi
 
 
 	echo "Copying kernel"
-	cp -v $SRC_DIR$SOURCE_FOLDER/arch/x86/boot/bzImage /boot/vmlinuz-$VERSION$LOCAL_VERSION
 	
+	cp -v $SRC_DIR$SOURCE_FOLDER/arch/x86/boot/bzImage /boot/vmlinuz-$VERSION$LOCAL_VERSION
+
 	if [ ! -d /lib/modules/$VERSION$LOCAL_VERSION/build ]
 	then
 	echo "Creating symlink to source folder..."
