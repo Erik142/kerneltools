@@ -142,6 +142,11 @@ const=0
 y=${array[1]}
 z=${array[2]}
 
+if [ $z -eq 0 ]
+then
+z=1
+fi
+
 
 
 fnSearchLinux() {
@@ -184,6 +189,10 @@ curl --output /dev/null --silent --head --fail "$RETRIEVE_PATH/linux-$w.$y.tar.x
 if [ $? -ne 0 ]
 	then
 	y=$((y-1))
+	if [ $y -ne ${array[1]} ]
+	then
+	z=1
+	fi
 	break
 fi
 
@@ -208,10 +217,16 @@ if [ $? -ne 0 ]
 fi
 z=$((z+1))
 done
-
+if [ $z -eq 0 ]
+then
+VERSION="$w.$y"
+SOURCE_CODE="linux-$w.$y.tar.xz"
+SOURCE_FOLDER="linux-$w.$y"
+else
 VERSION="$w.$y.$z"
 SOURCE_CODE="linux-$w.$y.$z.tar.xz"
 SOURCE_FOLDER="linux-$w.$y.$z"
+fi
 
 
 
@@ -239,10 +254,20 @@ if [ $? -ne 0 ]
 fi
 rc=$((rc+1))
 done
+
+if [ $rc -eq 0 ]
+then
+VERSION=""
+SOURCE_CODE=""
+SOURCE_FOLDER=""
+else
 VERSION="$w.$y-rc$rc"
 SOURCE_CODE="linux-$w.$y-rc$rc.tar.xz"
 SOURCE_FOLDER="linux-$w.$y-rc$rc"
 fi
+
+fi
+
 }
 
 
@@ -275,10 +300,6 @@ curl --output /dev/null --silent --head --fail $RETRIEVE_PATH_CK
 if [ $? -ne 0 ]
 then
 
-if [ $CK -eq 1 ]
-then
-break
-fi
 
 CK=$((CK-1))
 break
@@ -289,28 +310,101 @@ CK=$((CK+1))
 
 done
 
+if [ $CK -ne 0 ]
+then
 RETRIEVE_PATH_CK="http://ck.kolivas.org/patches/$w.0/$w.$y/$w.$y-ck$CK/patch-$w.$y-ck$CK.bz2"
-
-CK_VERSION="patch-$w.$y-ck$CK"
-
+CK_VERSION="$w.$y-ck$CK"
+else
+RETRIEVE_PATH_CK=""
+CK_VERSION=""
+fi
 fi
 
 
 if [ $SEARCH_FLAG -eq 1 ]
 	then
+	if [ -n "$VERSION" ]
+	then
 	echo "Latest linux version is $VERSION"
 	if [ $CK_FLAG -eq 1 ]
 		then
+		if [ $CK -ne 0 ]
+		then
 		echo "Latest ck patchset version is $w.$y-ck$CK"
+		else
+		echo "No CK patchset found for your linux version..."
+		fi
+	fi
+	else
+	echo "No RC-version found"
 	fi
 	exit 0
 fi
 
+if [ $RC_FLAG -eq 1 ]
+then
+	if [ $rc -eq 0 ]
+	then
+		echo "No RC-version found, search for stable kernel? Y/n"
+		read inputvar
+		case $inputvar in 
+		"Y" | "y")
+		RC_FLAG=0
+		fnSearchLinux
+		fnCheckSuccess;;
+		"N" | "n")
+		echo "Exiting..."
+		exit 1
+		fnCheckSuccess;;
+		*)
+		echo "Could not read that, please enter something else..."
+		esac
+
+	else
+	echo "Found linux $VERSION!"
+	fi
+else
 echo "Found linux $VERSION!"
+fi
 
 if [ $CK_FLAG -eq 1 ]
 	then
+	if [ $CK -ne 0]
+	then
 	echo "Found ck version $w.$y-ck$CK!"
+	fi
+	if [ $CK -eq 0 ]
+	then
+	echo "No CK version available for your linux version, build without CK? Y/n"
+	read inputvar
+	case $inputvar in
+	"Y" | "y")
+	CK_FLAG=0
+	CK_VERSION=""
+	echo "Do you want to specify another .config file? Y/n"
+	read inputvar
+	case $inputvar in
+	"Y" | "y")
+	echo "Enter .config file name located in /usr/src/configs"
+	read inputvar
+	CONFIG_FILE=$inputvar
+	echo ".config file is now $CONFIG_FILE"
+	fnCheckSuccess;;
+	"N" | "n")
+	fnCheckSuccess;;
+	*)
+	echo "Could not read that, please enter something else..."
+	esac
+
+
+	fnCheckSuccess;;
+	"N" | "n")
+	exit 1
+	fnCheckSuccess;;
+	*)
+	echo "Could not read that, please enter something else..."
+	esac
+	fi
 fi
 
 cd $SRC_DIR
@@ -327,7 +421,7 @@ fi
 if [ $CK_FLAG -eq 1 ]
 	then
 
-if [ ! -f "$CK_VERSION.bz2" ]
+if [ ! -f ""patch-$CK_VERSION".bz2" ]
 then
 
 echo "Retrieving patchset $w.$y-ck$CK..."
@@ -340,9 +434,9 @@ fi
 
 CK_VERSION="patch-$w.$y-ck$CK"
 
-if [ ! -f $CK_VERSION ]
+if [ ! -f "patch-$CK_VERSION" ]
 then
-	bunzip2 -k "$CK_VERSION.bz2"
+	bunzip2 -k ""patch-$CK_VERSION".bz2"
 	fnCheckSuccess
 fi
 fi
@@ -368,7 +462,7 @@ fnCheckSuccess
 
 	echo "Patching source code..."
 	cd "$SRC_DIR$SOURCE_FOLDER-ck$CK"
-	patch -p1 < $SRC_DIR/$CK_VERSION
+	patch -p1 < $SRC_DIR/"patch-$CK_VERSION"
 	fnCheckSuccess
 
 fi
@@ -399,13 +493,14 @@ fi
 		make mrproper
 		fnCheckSuccess
 	fi
-		
+	
+
+	echo $CONFIG_FILE	
 	if [ -f $SRC_DIR"configs/"$CONFIG_FILE ]
 	then
 	echo "Moving .config file"
 	cp $SRC_DIR"configs/"$CONFIG_FILE .config
 	fnCheckSuccess
-
 
 	
 
@@ -418,6 +513,8 @@ fi
 	"O" | "o")
 	make oldconfig
 	fnCheckSuccess;;
+	*)
+	echo "Could not read that, please enter something else..."
 	esac
 
 	else
@@ -555,7 +652,10 @@ fi
 
 
 	echo "Copying kernel"
-	
+	if [ $z -eq 0 ]
+	then
+	VERSION="$w.$y.$z"
+	fi
 	cp -v $SRC_DIR$SOURCE_FOLDER/arch/x86/boot/bzImage /boot/vmlinuz-$VERSION$LOCAL_VERSION
 
 	if [ ! -d /lib/modules/$VERSION$LOCAL_VERSION/build ]
