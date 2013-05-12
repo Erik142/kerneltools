@@ -108,7 +108,7 @@ done
 
 if [ $VBOX_FLAG -eq 1 ]
 then
-VBOXVERSION=$(find $SRC_DIR -type d -name vboxhost-\*)
+VBOXVERSION=$(find $SRC_DIR -maxdepth 1 -type d -name vboxhost-\*)
 
 VBOXVERSION=${VBOXVERSION#${SRC_DIR}}
 VBOXVERSION=$(printf $VBOXVERSION | sed 's/-/\//g')
